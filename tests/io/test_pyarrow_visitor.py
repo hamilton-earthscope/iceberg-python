@@ -240,6 +240,7 @@ def test_pyarrow_variable_binary_to_iceberg(pyarrow_type: pa.DataType) -> None:
     assert visit(converted_iceberg_type, _ConvertToArrowSchema()) == pa.large_binary()
 
 
+@pytest.mark.skipif(pa.__version__ < "18.0.0", reason="pyarrow uuid type is not supported before version 18.0.0")
 def test_pyarrow_uuid_to_iceberg() -> None:
     pyarrow_type = pa.uuid()
     converted_iceberg_type = visit_pyarrow(pyarrow_type, _ConvertToIceberg())

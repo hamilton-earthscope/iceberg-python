@@ -37,6 +37,7 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from concurrent.futures import Future
+from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
 from enum import Enum
@@ -684,7 +685,12 @@ class _ConvertToArrowSchema(SchemaVisitorPerPrimitiveType[pa.DataType]):
         return pa.large_string()
 
     def visit_uuid(self, _: UUIDType) -> pa.DataType:
-        return pa.uuid()
+        try:
+            # pyarrow added support for uuid in version 18.0
+            return pa.uuid()
+        except AttributeError:
+            # use binary type for older versions
+            return pa.binary(16)
 
     def visit_unknown(self, _: UnknownType) -> pa.DataType:
         return pa.null()
@@ -1252,8 +1258,11 @@ class _ConvertToIceberg(PyArrowSchemaVisitor[Union[IcebergType, Schema]]):
             return FixedType(primitive.byte_width)
         elif pa.types.is_null(primitive):
             return UnknownType()
-        elif isinstance(primitive, pa.UuidType):
-            return UUIDType()
+
+        # pyarrow added support for uuid in version 18.0
+        with suppress(AttributeError):
+            if isinstance(primitive, pa.UuidType):
+                return UUIDType()
 
         raise TypeError(f"Unsupported type: {primitive}")
 
